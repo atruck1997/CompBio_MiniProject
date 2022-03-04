@@ -1,56 +1,163 @@
 # -*- coding: utf-8 -*-
 """
-Created on Fri Feb 25 14:47:10 2022
+Created on Fri Mar  4 16:12:08 2022
 
 @author: Anthony
 """
 
-#CompBio Mini Project
-
-#Prereq 1: SPAdes installation. Typed this into terminal:
-    #wget http://cab.spbu.ru/files/release3.15.4/SPAdes-3.15.4-Linux.tar.gz
-    #tar -xzf SPAdes-3.15.4-Linux.tar.gz
-    #cd SPAdes-3.15.4-Linux/bin/
-    
-    #NOTE on SPAdes installation above: recommended to add "SPAdes installation directory to the PATH variable." 
-    #Not exactly sure what this means but if problems arise this could be why
-
-#Prereq 2: Prokka installation. Not working for some reason. 
-
-    
 import os
 from Bio import SeqIO
 
-#import os will create the working directory for the entire script. 
-#Creating new folder called "MiniProject_Script" and
-#ensuring that this is my current directory
-os.mkdir("MiniProject_Script")
-os.chdir("MiniProject_Script")
+os.path.expanduser('~') #Puts you into home directory
+user_path = os.getcwd() #displays the current working directory of machine. should be the home direc. or wherever python is installed
+print(user_path)
+directory = 'results' #This will create the desired results folder where results of pipeline will show up
+path = os.path.join(user_path, directory) #will join the user_path and results
 
-#creating the requested output file and files listed below in a "Results" folder. Do this via an os.sytem call
-Log_Results = open("miniproject.log", "w")
+#cannot make a directory if it already exists.
+#This will create directory ONLY if it doesnt already exist
+if not os.path.isdir(path):
+ os.mkdir(path)
 
+#variable storing requested miniproject.log file  
+#log_file = open(path + "/miniproject.log", 'w')
 
 #1. Retrieve the Illumina reads for the resequencing of K-12 project: https://www.ncbi.nlm.nih.gov/sra/SRX5005282
-    #These are single-end Illumina reads. Doing this via the backend of NCBI
+ #These are single-end Illumina reads. Doing this via the backend of NCBI
 
-os.system("wget ftp://ftp.ncbi.nlm.nih.gov/sra/sra-instant/reads/ByRun/sra/SRR/SRR818/SRR8185310/SRR8185310.sra")
+os.system("prefetch SRR8185310")
 
-Illum_Reads_File = "SRR8185310.sra" #Reads stored here. Single-end in this case
 #Need to uncompress the .sra file above via fastq-dump. .sra files = huge.
-#fastq-dump also converts .sra file into a fastq file
+#fastq-dump converts .sra file of reads into a fastq file for SPAdes
 
-os.system("fastq-dump " + Illum_Reads_File)
-
-#create new variable to store the newly formed .fastq file after fastq-dump does its job
-fastq_File = "SRR8185310.fastq"
+os.system('fastq-dump -I --split-files SRR8185310.sra')
 
 #2. Using SPAdes, assemble the genome. Write the SPAdes command to the log file.
-#Code that will call SPAdes to do the assembly
+#Code that will call SPAdes to do the 
+#-t is the number of threads used 
+#-o is the output directory. /results/SRR8185310_Assembly
+#This will run SPAdes
 
-SPAdes_Assembly = "spades -k 55,77,99,127 -t 2 --only-assembler -s " + fastq_File + " -o SRR8185310_Assembly/"
-Log_Results.write(SPAdes_Assembly + " \n")
-os.system(SPAdes_Assembly)
-## This is the handle for the assembled contig file
-contig_handle = "SRR8185310_Assembly/contigs.fasta"
-contigs = SeqIO.parse(contig_handle, "fasta")
+command = 'python3 SPAdes-3.15.4-Darwin/bin/spades.py -k 55, 77, 99, 127 -t 2 --only-assembler -s SRR8185310_1.fastq -o ' + path +'/SRR8185310_Assembly/'
+
+#Writing command to MiniProject.log
+#first output that will be written to it
+log_file = open(path + "/MiniProject.log","w+")
+for i in range(1):
+ log_file.write("Spades command: " + command + "/n" + "/n")
+
+#3. Code to keep contigs > 1000.
+#path = '/Users/Anthony/Desktop/Comp/SRR8185310_Assembly/'
+
+Contigs_Over_1000=[]
+
+with open(path + "contigs.fasta", "rU") as handle:
+    for record in SeqIO.parse(handle, "fasta"):
+        if len(record.seq) > 1000:
+ # Add this record to our list
+         Contigs_Over_1000.append(record)
+
+long_assembly = ("There are %i contigs > 1000 in the assembly." % len(Contigs_Over_1000))
+#print(long_assembly)
+
+#RESULT of long_assembly - There are 150 contigs > 1000 in the assembly.
+
+#Write these sequences to their own file 'long_sequences.fasta' 
+#for use with Prokka. Input file to prokka - long_sequences.fasta
+SeqIO.write(Contigs_Over_1000, "long_sequences.fasta", "fasta")
+
+#IN THE SRR8185310_Assembly Folder!!.  
+#Write to miniproject.log
+log_file = open(path + "miniproject.log","a+")
+for i in range(1):
+ log_file.write(long_assembly + "\n" + "\n")
+
+#4. Code for determining total assembly reads for contigs > 1000
+length = 0
+temp = 0
+for record in SeqIO.parse('long_sequences.fasta', 'fasta'):
+ temp = len(record)
+ length += temp
+final_length = str(length)
+total_length = ('There are ' + str(length) + ' bp in the assembly.')
+#print(total_length)
+
+#RESULT of total assembly reads for contigs > 1000 -  
+#There are 4535677 bp in the assembly
+
+#Write total_length command to miniproject.log
+#path = '/Users/Anthony/Desktop/Comp/SRR8185310_Assembly/'
+log_file = open(path + "miniproject.log","a+")
+for i in range(1):
+ log_file.write(total_length + "\n" + "\n")
+
+#5. Using prokka to annotate Assembly.This command will call prokka to 
+#annotate genome
+
+# --outdir is where the results of prokka will go
+
+os.system('prokka --outdir ' + path + '/Prokka_Output/ --prefix Ecoli --genus Escherichia long_sequences.fasta')
+
+# Write the prokka command to miniproject.log
+
+prokka_command = "prokka --outdir " + path + "/Prokka_Output/ --prefix Ecoli --genus Escherichia long_sequences.fasta"
+log = open(path + "/miniproject.log","a+")
+for i in range(1):
+ log.write(prokka_command + "\n" + "\n")
+
+#6. Writing the results of prokka as txt in the log file
+
+Prokka_Output = open(path + "/Prokka_Output/Ecoli.txt").readlines()
+for line in Prokka_Output:
+ log_file.append(line + "/n")
+
+#7. Discrepancy between assmbled genome in RefSeq and prokka annotation
+#First storing the number of CDS and tRNAs that Prokka found
+CDS = int(path + '/Prokka_Output/'[4].strip().split(" ")[1])
+tRNA = int(path + 'Prokka_Output/'[5].strip().split(" ")[1])
+
+#since we already know how many CDS and tRNAs are in the RefSeq file..
+if CDS > 4140:
+ log_file.append("Prokka found an additional " + str(4140-CDS) + " fewer CDS than the RefSeq ")
+
+if tRNA > 89:
+ log_file.append(" and " + str(tRNA-89) + "additional tRNA than the RefSeq " + "/n")
+
+else:
+ log_file.append(" and " + str(89-tRNA) + " fewer tRNA than the RefSeq " + "/n")
+
+#8.Use TopHat and Cufflinks to map the reads of the of a K-12 derivative 
+#and quantify their expression
+
+#Retrieve necessary sequence(s)
+os.system("prefetch SRR1411276")
+
+#convert into fastq format via fastq-dump
+os.system("fastq-dump SRR1411276")
+
+#Retrieve .fna file
+os.system("wget ftp://ftp.ncbi.nlm.nih.gov/genomes/archive/old_refseq/Bacteria/Escherichia_coli_K_12_substr__MG1655_uid57779/NC_000913.fna")
+
+#Building a bowtie2 index from complete genome to use with TopHat
+os.system("bowtie2-build NC_000913.fna EcoliK12")
+
+#Calling TopHat and Cufflinks
+os.system("tophat2 -o " + path + "/SRR1411276_output --no-novel-juncs -p 2 EcoliK12 SRR1411276_1.fastq")
+
+os.system("cufflinks -o " + path + "/cufflinks_output -p 2 accepted_hits.bam")
+
+#opening the results of Cufflinks to Parse data.
+data = open(path + "/cufflinks_output/transcripts.gtf").readlines()
+Out = open(path + "/miniproject.fpkm", "w")
+#this will iterate through the results of Cufflinks
+#will write desired data ()
+
+for line in data:
+ line_data = line.split("\t")
+ Out.write(line_data[0] + ", " + line_data[3] + ", " + line_data[4] + ", " + line_data[6] + ", ")
+ attributes = line_data[8].split("; ")
+ for attribute in attributes:
+ if "FPKM" in attribute:
+ Out.write(attribute + " \n")
+log_file.close()
+Out.close()
