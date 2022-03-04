@@ -1,4 +1,4 @@
-CompBio MiniProject
+# CompBio MiniProject
 
 ---
 
