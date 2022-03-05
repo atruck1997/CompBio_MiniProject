@@ -42,7 +42,7 @@ command = 'python3 SPAdes-3.15.4-Darwin/bin/spades.py -k 55, 77, 99, 127 -t 2 --
 
 #Writing command to MiniProject.log
 #first output that will be written to it
-log_file = open(path + "/MiniProject.log","w+")
+log_file = open(path + "/MiniProject.log","w+") #AFTER DUE DATE. But should be "/miniproject.log" here
 for i in range(1):
  log_file.write("Spades command: " + command + "/n" + "/n")
 
@@ -87,7 +87,7 @@ total_length = ('There are ' + str(length) + ' bp in the assembly.')
 
 #Write total_length command to miniproject.log
 #path = '/Users/Anthony/Desktop/Comp/SRR8185310_Assembly/'
-log_file = open(path + "miniproject.log","a+")
+log_file = open(path + "miniproject.log","a+") #AFTER DUE DATE. "/miniproject.log"
 for i in range(1):
  log_file.write(total_length + "\n" + "\n")
 
@@ -103,13 +103,13 @@ os.system('prokka --outdir ' + path + '/Prokka_Output/ --prefix Ecoli --genus Es
 prokka_command = "prokka --outdir " + path + "/Prokka_Output/ --prefix Ecoli --genus Escherichia long_sequences.fasta"
 log = open(path + "/miniproject.log","a+")
 for i in range(1):
- log.write(prokka_command + "\n" + "\n")
+ log.write(prokka_command + "\n" + "\n") #AFTER DUE DATE: "log_file.write"
 
 #6. Writing the results of prokka as txt in the log file
 
 Prokka_Output = open(path + "/Prokka_Output/Ecoli.txt").readlines()
 for line in Prokka_Output:
- log_file.append(line + "/n")
+ log_file.append(line + "/n") #AFTER DUE DATE: wasn't sure how to add this the same way as above. Maybe should have kept it as ".write" wasnt sure if it would override previous entries
 
 #7. Discrepancy between assmbled genome in RefSeq and prokka annotation
 #First storing the number of CDS and tRNAs that Prokka found
@@ -118,13 +118,13 @@ tRNA = int(path + 'Prokka_Output/'[5].strip().split(" ")[1])
 
 #since we already know how many CDS and tRNAs are in the RefSeq file..
 if CDS > 4140:
- log_file.append("Prokka found an additional " + str(4140-CDS) + " fewer CDS than the RefSeq ")
+ log_file.append("Prokka found an additional " + str(4140-CDS) + " fewer CDS than the RefSeq ") #".write"
 
 if tRNA > 89:
- log_file.append(" and " + str(tRNA-89) + "additional tRNA than the RefSeq " + "/n")
+ log_file.append(" and " + str(tRNA-89) + "additional tRNA than the RefSeq " + "/n") #".write"
 
 else:
- log_file.append(" and " + str(89-tRNA) + " fewer tRNA than the RefSeq " + "/n")
+ log_file.append(" and " + str(89-tRNA) + " fewer tRNA than the RefSeq " + "/n") #".write"
 
 #8.Use TopHat and Cufflinks to map the reads of the of a K-12 derivative 
 #and quantify their expression
@@ -150,8 +150,9 @@ os.system("cufflinks -o " + path + "/cufflinks_output -p 2 accepted_hits.bam")
 data = open(path + "/cufflinks_output/transcripts.gtf").readlines()
 Out = open(path + "/miniproject.fpkm", "w")
 #this will iterate through the results of Cufflinks
-#will write desired data ()
+#will write desired data () #tried using a different directory to store output of this data.
 
+#found something similar to this deep in a rabbit hole about how to use/store cufflinks data.
 for line in data:
  line_data = line.split("\t")
  Out.write(line_data[0] + ", " + line_data[3] + ", " + line_data[4] + ", " + line_data[6] + ", ")
@@ -161,3 +162,5 @@ for line in data:
  Out.write(attribute + " \n")
 log_file.close()
 Out.close()
+
+#Never really got it to work all at once. I'm thinking that this was likely due to having all of the tools installed about 10 different ways. Mac versions. conda versions. linux versions on server. etc.
